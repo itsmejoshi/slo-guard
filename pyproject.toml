@@ -1,0 +1,55 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "slo-guard"
+version = "0.1.0"
+description = "SLO error-budget tracking and multi-window burn-rate alerting for SRE/DevOps teams"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.9"
+authors = [
+    { name = "Sai Joshitha Kathari", email = "kathari.saijoshitha@gmail.com" }
+]
+keywords = ["sre", "slo", "observability", "prometheus", "monitoring", "devops", "error-budget"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: System :: Monitoring",
+    "Topic :: System :: Systems Administration",
+]
+dependencies = [
+    "PyYAML>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "ruff>=0.4",
+]
+
+[project.urls]
+Homepage = "https://github.com/itsmejoshi/slo-guard"
+Repository = "https://github.com/itsmejoshi/slo-guard"
+Issues = "https://github.com/itsmejoshi/slo-guard/issues"
+
+[project.scripts]
+slo-guard = "slo_guard.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/slo_guard"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100

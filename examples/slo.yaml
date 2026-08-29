@@ -1,0 +1,10 @@
+# Example SLO definition for slo-guard.
+# Copy this file, rename it, and adjust the selectors to match your metrics.
+
+name: checkout-availability
+target: 0.999          # 99.9% of requests must succeed
+period_days: 30         # rolling 30-day compliance window
+
+# PromQL selectors used to compute the bad-event ratio.
+error_selector: 'http_requests_total{job="checkout",code=~"5.."}'
+total_selector: 'http_requests_total{job="checkout"}'

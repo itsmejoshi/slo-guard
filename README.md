@@ -1,0 +1,93 @@
+# slo-guard
+
+Error-budget tracking and **multi-window, multi-burn-rate alerting** for SRE/DevOps teams, built around the technique described in Google's *SRE Workbook* ("Alerting on SLOs").
+
+Instead of alerting the moment error rate ticks up, `slo-guard` computes how fast a service is burning its error budget relative to a uniform, budget-neutral pace — and generates ready-to-use Prometheus alerting rules from a single SLO definition.
+
+## Why burn-rate alerting?
+
+A raw "error rate > X%" alert either fires too late (averaged over a long window) or too often (noisy on a short one). Burn-rate alerting fixes this by pairing a **long window** (to size the alert against your actual error budget) with a **short window** (to confirm the problem hasn't already resolved), at multiple severities:
+
+| Window pair       | Budget consumed | Meaning                          | Typical severity |
+|--------------------|-----------------|-----------------------------------|-------------------|
+| 1h / 5m            | 2% in 1 hour    | Fast, severe burn                 | Page              |
+| 6h / 30m           | 5% in 6 hours   | Sustained, moderate burn          | Page              |
+| 3d / 6h            | 10% in 3 days   | Slow leak worth investigating     | Ticket            |
+
+The exact multipliers are derived from your SLO's target and period, not hard-coded — a 99.9%/30-day SLO reproduces the well-known 14.4 / 6 / 1 burn-rate constants automatically; other targets and periods scale correctly.
+
+## Install
+
+```bash
+pip install slo-guard
+```
+
+## Quick start
+
+**1. Define your SLO** (`slo.yaml`):
+
+```yaml
+name: checkout-availability
+target: 0.999
+period_days: 30
+error_selector: 'http_requests_total{job="checkout",code=~"5.."}'
+total_selector: 'http_requests_total{job="checkout"}'
+```
+
+**2. Generate Prometheus alerting rules:**
+
+```bash
+slo-guard rules --config slo.yaml --out checkout-rules.yml
+```
+
+**3. Check current error-budget status:**
+
+```bash
+slo-guard budget --config slo.yaml --bad-ratio 0.0015
+```
+
+```
+SLO: checkout-availability (target=99.9000%, period=30d)
+Observed bad-event ratio: 0.1500%
+Error budget consumed:    150.00%
+Error budget remaining:   -50.00%
+Remaining budget (time):  -21600.0 minutes
+STATUS: SLO VIOLATED -- error budget exhausted.
+```
+
+**4. Or use it as a library:**
+
+```python
+from slo_guard import SLO, evaluate_policy
+
+slo = SLO(name="checkout-availability", target=0.999, period_days=30)
+print(slo.budget_consumed(bad_event_ratio=0.0005))  # 0.5 (50% of budget used)
+
+for window in evaluate_policy(slo):
+    print(window["name"], window["burn_rate_threshold"])
+```
+
+## Development
+
+```bash
+git clone https://github.com/itsmejoshi/slo-guard
+cd slo-guard
+pip install -e ".[dev]"
+pytest
+```
+
+## Publishing (maintainer notes)
+
+```bash
+python -m build
+twine upload dist/*
+```
+
+## License
+
+MIT — see [LICENSE](LICENSE).
+
+## Related reading
+
+- Google SRE Workbook, ["Alerting on SLOs"](https://sre.google/workbook/alerting-on-slo/)
+- Similar tools in this space: [Pyrra](https://github.com/pyrra-dev/pyrra), [Sloth](https://github.com/slok/sloth) — `slo-guard` focuses on being a minimal, dependency-light library you can embed directly in Python tooling or CI, rather than a standalone operator.
