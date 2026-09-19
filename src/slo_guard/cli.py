@@ -7,6 +7,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 
 from .config import load_config
@@ -31,13 +32,28 @@ def _cmd_budget(args: argparse.Namespace) -> int:
     consumed = slo.budget_consumed(args.bad_ratio)
     remaining = slo.budget_remaining(args.bad_ratio)
     remaining_minutes = slo.budget_remaining_minutes(args.bad_ratio)
+    violated = remaining < 0
+
+    if args.format == "json":
+        payload = {
+            "slo": slo.name,
+            "target": slo.target,
+            "period_days": slo.period_days,
+            "bad_event_ratio": args.bad_ratio,
+            "budget_consumed": consumed,
+            "budget_remaining": remaining,
+            "budget_remaining_minutes": remaining_minutes,
+            "violated": violated,
+        }
+        print(json.dumps(payload, indent=2))
+        return 1 if violated else 0
 
     print(f"SLO: {slo.name} (target={slo.target:.4%}, period={slo.period_days}d)")
     print(f"Observed bad-event ratio: {args.bad_ratio:.4%}")
     print(f"Error budget consumed:    {consumed:.2%}")
     print(f"Error budget remaining:   {remaining:.2%}")
     print(f"Remaining budget (time):  {remaining_minutes:.1f} minutes")
-    if remaining < 0:
+    if violated:
         print("STATUS: SLO VIOLATED -- error budget exhausted.", file=sys.stderr)
         return 1
     return 0
@@ -56,6 +72,12 @@ def main(argv: list[str] | None = None) -> int:
     p_budget.add_argument("--config", required=True, help="Path to SLO YAML config")
     p_budget.add_argument(
         "--bad-ratio", required=True, type=float, help="Observed bad-event ratio, e.g. 0.0015"
+    )
+    p_budget.add_argument(
+        "--format",
+        choices=["text", "json"],
+        default="text",
+        help="Output format (default: text). Use 'json' for CI/automation consumption.",
     )
     p_budget.set_defaults(func=_cmd_budget)
 

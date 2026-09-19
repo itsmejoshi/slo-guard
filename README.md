@@ -55,6 +55,25 @@ Remaining budget (time):  -21600.0 minutes
 STATUS: SLO VIOLATED -- error budget exhausted.
 ```
 
+Add `--format json` for machine-readable output (CI systems, dashboards):
+
+```bash
+slo-guard budget --config slo.yaml --bad-ratio 0.0015 --format json
+```
+
+```json
+{
+  "slo": "checkout-availability",
+  "target": 0.999,
+  "period_days": 30,
+  "bad_event_ratio": 0.0015,
+  "budget_consumed": 1.5,
+  "budget_remaining": -0.5,
+  "budget_remaining_minutes": -21600.0,
+  "violated": true
+}
+```
+
 **4. Or use it as a library:**
 
 ```python

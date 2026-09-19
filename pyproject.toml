@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "slo-guard"
-version = "0.1.0"
+version = "0.2.0"
 description = "SLO error-budget tracking and multi-window burn-rate alerting for SRE/DevOps teams"
 readme = "README.md"
 license = { text = "MIT" }

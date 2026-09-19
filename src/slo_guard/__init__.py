@@ -13,7 +13,7 @@ from .config import SLOConfig, load_config
 from .core import SLO
 from .rules import build_alert_group, render_yaml
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
     "DEFAULT_POLICY",
