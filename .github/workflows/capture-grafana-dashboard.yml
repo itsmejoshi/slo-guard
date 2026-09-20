@@ -1,0 +1,71 @@
+name: Capture Grafana dashboard screenshot
+
+on:
+  push:
+    branches:
+      - capture-grafana-dashboard
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Start Grafana demo stack
+        run: docker compose -f examples/grafana/docker-compose.yml up -d
+
+      - name: Wait for Grafana and provisioned dashboard
+        shell: bash
+        run: |
+          set -euo pipefail
+          for i in {1..60}; do
+            if curl -fsS http://localhost:3000/api/health >/dev/null 2>&1; then
+              break
+            fi
+            sleep 2
+          done
+          curl -fsS http://localhost:3000/api/health
+          for i in {1..60}; do
+            if curl -fsS http://localhost:3000/api/dashboards/uid/slo-guard-overview >/dev/null 2>&1; then
+              echo "Dashboard is provisioned"
+              break
+            fi
+            sleep 2
+          done
+          curl -fsS http://localhost:3000/api/dashboards/uid/slo-guard-overview >/dev/null
+
+      - name: Give Prometheus time to collect demo metrics
+        run: |
+          curl -fsS http://localhost:8000/burn || true
+          sleep 25
+
+      - name: Capture real Grafana dashboard screenshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          BROWSER="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
+          if [ -z "$BROWSER" ]; then
+            echo "No supported Chromium browser found on runner"
+            exit 1
+          fi
+          "$BROWSER"             --headless=new             --no-sandbox             --disable-gpu             --hide-scrollbars             --window-size=1600,1400             --virtual-time-budget=12000             --screenshot=artifacts/slo-guard-dashboard.png             "http://localhost:3000/d/slo-guard-overview/slo-guard-slo-error-budget-overview?orgId=1&from=now-15m&to=now&kiosk"
+          test -s artifacts/slo-guard-dashboard.png
+          file artifacts/slo-guard-dashboard.png
+          ls -lh artifacts/slo-guard-dashboard.png
+
+      - name: Upload dashboard screenshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: grafana-dashboard-screenshot
+          path: artifacts/slo-guard-dashboard.png
+          if-no-files-found: error
+
+      - name: Show stack logs on failure
+        if: failure()
+        run: docker compose -f examples/grafana/docker-compose.yml logs --no-color
+
+      - name: Stop demo stack
+        if: always()
+        run: docker compose -f examples/grafana/docker-compose.yml down -v
