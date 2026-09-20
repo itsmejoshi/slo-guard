@@ -1,0 +1,9 @@
+# Isolated SLO definition used by the Grafana demo.
+# The underscore in the SLO name keeps generated Prometheus alert names valid.
+
+name: checkout_availability
+target: 0.999
+period_days: 30
+
+error_selector: 'http_requests_total{job="checkout",code=~"5.."}'
+total_selector: 'http_requests_total{job="checkout"}'
