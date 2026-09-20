@@ -1,0 +1,30 @@
+groups:
+- name: checkout_availability-burn-rate
+  rules:
+  - alert: checkout_availability_burn_rate_fast
+    expr: (sum(rate(http_requests_total{job="checkout",code=~"5.."}[1h])) / sum(rate(http_requests_total{job="checkout"}[1h]))) > 0.0144 and (sum(rate(http_requests_total{job="checkout",code=~"5.."}[5m])) / sum(rate(http_requests_total{job="checkout"}[5m]))) > 0.0144
+    for: 2m
+    labels:
+      severity: page
+      slo: checkout_availability
+    annotations:
+      summary: 'checkout_availability: burning error budget >14.4x over 1h (confirmed over 5m)'
+      description: 'Error ratio over 1h and 5m both exceed the budget-neutral threshold for the 99.9000% / 30d SLO. Severity: page.'
+  - alert: checkout_availability_burn_rate_medium
+    expr: (sum(rate(http_requests_total{job="checkout",code=~"5.."}[6h])) / sum(rate(http_requests_total{job="checkout"}[6h]))) > 0.006 and (sum(rate(http_requests_total{job="checkout",code=~"5.."}[30m])) / sum(rate(http_requests_total{job="checkout"}[30m]))) > 0.006
+    for: 15m
+    labels:
+      severity: page
+      slo: checkout_availability
+    annotations:
+      summary: 'checkout_availability: burning error budget >6.0x over 6h (confirmed over 30m)'
+      description: 'Error ratio over 6h and 30m both exceed the budget-neutral threshold for the 99.9000% / 30d SLO. Severity: page.'
+  - alert: checkout_availability_burn_rate_slow
+    expr: (sum(rate(http_requests_total{job="checkout",code=~"5.."}[72h])) / sum(rate(http_requests_total{job="checkout"}[72h]))) > 0.001 and (sum(rate(http_requests_total{job="checkout",code=~"5.."}[6h])) / sum(rate(http_requests_total{job="checkout"}[6h]))) > 0.001
+    for: 60m
+    labels:
+      severity: ticket
+      slo: checkout_availability
+    annotations:
+      summary: 'checkout_availability: burning error budget >1.0x over 72h (confirmed over 6h)'
+      description: 'Error ratio over 72h and 6h both exceed the budget-neutral threshold for the 99.9000% / 30d SLO. Severity: ticket.'
