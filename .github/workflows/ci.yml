@@ -45,7 +45,17 @@ jobs:
           slo-guard rules \
             --config examples/grafana/slo.yaml \
             --out /tmp/checkout-rules.yml
-          diff -u examples/grafana/prometheus/rules/checkout-rules.yml /tmp/checkout-rules.yml
+          python - <<'PY'
+          import yaml
+          from pathlib import Path
+
+          committed = yaml.safe_load(
+              Path("examples/grafana/prometheus/rules/checkout-rules.yml").read_text()
+          )
+          generated = yaml.safe_load(Path("/tmp/checkout-rules.yml").read_text())
+          assert committed == generated, "Committed Prometheus rules differ semantically from slo-guard output"
+          print("Committed Prometheus rules match slo-guard output")
+          PY
 
       - name: Start Grafana demo stack
         run: docker compose -f examples/grafana/docker-compose.yml up -d
