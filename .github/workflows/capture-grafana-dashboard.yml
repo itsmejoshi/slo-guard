@@ -35,10 +35,10 @@ jobs:
           done
           curl -fsS http://localhost:3000/api/dashboards/uid/slo-guard-overview >/dev/null
 
-      - name: Give Prometheus time to collect demo metrics
+      - name: Collect healthy demo metrics
         run: |
-          curl -fsS http://localhost:8000/burn || true
-          sleep 25
+          curl -fsS http://localhost:8000/recover || true
+          sleep 45
 
       - name: Capture real Grafana dashboard screenshot
         shell: bash
@@ -50,7 +50,7 @@ jobs:
             echo "No supported Chromium browser found on runner"
             exit 1
           fi
-          "$BROWSER"             --headless=new             --no-sandbox             --disable-gpu             --hide-scrollbars             --window-size=1600,1400             --virtual-time-budget=12000             --screenshot=artifacts/slo-guard-dashboard.png             "http://localhost:3000/d/slo-guard-overview/slo-guard-slo-error-budget-overview?orgId=1&from=now-15m&to=now&kiosk"
+          "$BROWSER"             --headless=new             --no-sandbox             --disable-gpu             --hide-scrollbars             --window-size=1600,1000             --virtual-time-budget=12000             --screenshot=artifacts/slo-guard-dashboard.png             "http://localhost:3000/d/slo-guard-overview/slo-guard-slo-error-budget-overview?orgId=1&from=now-5m&to=now&kiosk"
           test -s artifacts/slo-guard-dashboard.png
           file artifacts/slo-guard-dashboard.png
           ls -lh artifacts/slo-guard-dashboard.png
