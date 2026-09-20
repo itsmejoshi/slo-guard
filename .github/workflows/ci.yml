@@ -111,15 +111,16 @@ jobs:
 
           for i in {1..20}; do
             if curl -fsS -u admin:admin \
-              'http://localhost:3000/api/search?query=slo-guard' \
-              | grep -q 'slo-guard: SLO & Error Budget Overview'; then
+              'http://localhost:3000/api/dashboards/uid/slo-guard-overview' \
+              | python -c 'import json,sys; d=json.load(sys.stdin); raise SystemExit(0 if d.get("dashboard",{}).get("title") == "slo-guard: SLO & Error Budget Overview" else 1)'; then
               echo "Grafana dashboard is provisioned"
               exit 0
             fi
             sleep 2
           done
 
-          echo "Grafana dashboard was not found through the API" >&2
+          echo "Grafana dashboard was not found through the UID API" >&2
+          curl -i -u admin:admin 'http://localhost:3000/api/dashboards/uid/slo-guard-overview' || true
           exit 1
 
       - name: Trigger and validate fast burn-rate alert
