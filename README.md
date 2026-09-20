@@ -25,6 +25,10 @@ Then open Grafana at `http://localhost:3000`.
 
 [View the Grafana example](examples/grafana/) · [See the successful end-to-end validation run](https://github.com/itsmejoshi/slo-guard/actions/runs/35525697460)
 
+![slo-guard Grafana dashboard](examples/grafana/screenshots/slo-guard-dashboard.png)
+
+*Real dashboard capture from the included Prometheus + Grafana demo stack in a healthy state.*
+
 ## Why burn-rate alerting?
 
 A raw "error rate > X%" alert either fires too late (averaged over a long window) or too often (noisy on a short one). Burn-rate alerting fixes this by pairing a **long window** (to size the alert against your actual error budget) with a **short window** (to confirm the problem hasn't already resolved), at multiple severities:
