@@ -90,9 +90,19 @@ jobs:
           docker compose -f examples/grafana/docker-compose.yml exec -T prometheus \
             promtool check rules /etc/prometheus/rules/checkout-rules.yml
 
-          curl -fsS \
-            'http://localhost:9090/api/v1/query?query=up%7Bjob%3D%22checkout%22%7D' \
-            | python -c 'import json,sys; d=json.load(sys.stdin); r=d["data"]["result"]; assert r and r[0]["value"][1] == "1", d'
+          for i in {1..20}; do
+            if curl -fsS \
+              'http://localhost:9090/api/v1/query?query=up%7Bjob%3D%22checkout%22%7D' \
+              | python -c 'import json,sys; d=json.load(sys.stdin); r=d["data"]["result"]; raise SystemExit(0 if r and r[0]["value"][1] == "1" else 1)'; then
+              echo "Prometheus is scraping the checkout target"
+              exit 0
+            fi
+            sleep 2
+          done
+
+          echo "Prometheus checkout target never became healthy" >&2
+          curl -fsS 'http://localhost:9090/api/v1/targets' || true
+          exit 1
 
       - name: Validate provisioned Grafana dashboard
         run: |
