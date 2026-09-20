@@ -1,9 +1,12 @@
-name: Capture Grafana dashboard screenshot
+name: Capture and commit Grafana dashboard screenshot
 
 on:
   push:
     branches:
       - capture-grafana-dashboard
+
+permissions:
+  contents: write
 
 jobs:
   capture:
@@ -55,12 +58,25 @@ jobs:
           file artifacts/slo-guard-dashboard.png
           ls -lh artifacts/slo-guard-dashboard.png
 
-      - name: Upload dashboard screenshot
+      - name: Upload dashboard screenshot artifact
         uses: actions/upload-artifact@v4
         with:
           name: grafana-dashboard-screenshot
           path: artifacts/slo-guard-dashboard.png
           if-no-files-found: error
+
+      - name: Commit screenshot to branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p examples/grafana/screenshots
+          cp artifacts/slo-guard-dashboard.png examples/grafana/screenshots/slo-guard-dashboard.png
+          rm .github/workflows/capture-grafana-dashboard.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add examples/grafana/screenshots/slo-guard-dashboard.png .github/workflows/capture-grafana-dashboard.yml
+          git commit -m "docs: add real Grafana dashboard screenshot"
+          git push origin HEAD:capture-grafana-dashboard
 
       - name: Show stack logs on failure
         if: failure()
