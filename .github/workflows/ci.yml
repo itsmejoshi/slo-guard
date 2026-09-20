@@ -24,3 +24,116 @@ jobs:
         run: ruff check src tests
       - name: Test
         run: pytest --cov=slo_guard --cov-report=term-missing
+
+  grafana-demo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install slo-guard
+        run: pip install -e .
+
+      - name: Validate Compose and generated Prometheus rules
+        run: |
+          set -euo pipefail
+          docker compose -f examples/grafana/docker-compose.yml config >/dev/null
+          slo-guard rules \
+            --config examples/grafana/slo.yaml \
+            --out /tmp/checkout-rules.yml
+          diff -u examples/grafana/prometheus/rules/checkout-rules.yml /tmp/checkout-rules.yml
+
+      - name: Start Grafana demo stack
+        run: docker compose -f examples/grafana/docker-compose.yml up -d
+
+      - name: Wait for services
+        run: |
+          set -euo pipefail
+
+          wait_for() {
+            local name="$1"
+            local url="$2"
+            for i in {1..30}; do
+              if curl -fsS "$url" >/dev/null; then
+                echo "$name is ready"
+                return 0
+              fi
+              sleep 2
+            done
+            echo "$name did not become ready: $url" >&2
+            return 1
+          }
+
+          wait_for "demo app" "http://localhost:8000/healthz"
+          wait_for "Prometheus" "http://localhost:9090/-/ready"
+          wait_for "Grafana" "http://localhost:3000/api/health"
+
+      - name: Validate Prometheus configuration and scrape target
+        run: |
+          set -euo pipefail
+          docker compose -f examples/grafana/docker-compose.yml exec -T prometheus \
+            promtool check config /etc/prometheus/prometheus.yml
+          docker compose -f examples/grafana/docker-compose.yml exec -T prometheus \
+            promtool check rules /etc/prometheus/rules/checkout-rules.yml
+
+          curl -fsS \
+            'http://localhost:9090/api/v1/query?query=up%7Bjob%3D%22checkout%22%7D' \
+            | python -c 'import json,sys; d=json.load(sys.stdin); r=d["data"]["result"]; assert r and r[0]["value"][1] == "1", d'
+
+      - name: Validate provisioned Grafana dashboard
+        run: |
+          set -euo pipefail
+          python -m json.tool examples/grafana/grafana/dashboards/slo-guard-overview.json >/dev/null
+
+          for i in {1..20}; do
+            if curl -fsS -u admin:admin \
+              'http://localhost:3000/api/search?query=slo-guard' \
+              | grep -q 'slo-guard: SLO & Error Budget Overview'; then
+              echo "Grafana dashboard is provisioned"
+              exit 0
+            fi
+            sleep 2
+          done
+
+          echo "Grafana dashboard was not found through the API" >&2
+          exit 1
+
+      - name: Trigger and validate fast burn-rate alert
+        run: |
+          set -euo pipefail
+          curl -fsS http://localhost:8000/burn
+          echo "Waiting for the 2-minute fast burn-rate alert to fire..."
+
+          for i in {1..24}; do
+            if curl -fsS http://localhost:9090/api/v1/alerts \
+              | python -c 'import json,sys; d=json.load(sys.stdin); alerts=d["data"]["alerts"]; raise SystemExit(0 if any(a.get("labels",{}).get("alertname") == "checkout_availability_burn_rate_fast" and a.get("state") == "firing" for a in alerts) else 1)'; then
+              echo "Fast burn-rate alert is firing"
+              exit 0
+            fi
+            sleep 10
+          done
+
+          echo "Fast burn-rate alert did not reach firing state" >&2
+          curl -fsS http://localhost:9090/api/v1/alerts || true
+          exit 1
+
+      - name: Validate recovery control
+        run: |
+          set -euo pipefail
+          curl -fsS http://localhost:8000/recover | grep -q 'mode=normal'
+          curl -fsS http://localhost:8000/metrics | grep -q 'slo_guard_demo_mode{mode="normal"} 1'
+          echo "Demo returned to normal mode (alerts decay according to their PromQL windows)."
+
+      - name: Show container status and logs on failure
+        if: failure()
+        run: |
+          docker compose -f examples/grafana/docker-compose.yml ps || true
+          docker compose -f examples/grafana/docker-compose.yml logs --no-color || true
+
+      - name: Stop Grafana demo stack
+        if: always()
+        run: docker compose -f examples/grafana/docker-compose.yml down -v
