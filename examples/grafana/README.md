@@ -4,6 +4,12 @@ This directory is an **optional, isolated demo** for visualizing the same SLO si
 
 It does not change the `slo-guard` Python package or CLI. Everything here runs separately under `examples/grafana/`.
 
+## Dashboard
+
+![slo-guard Grafana dashboard](screenshots/slo-guard-dashboard.png)
+
+This is a real capture from the included demo stack in its healthy state.
+
 ## What the demo includes
 
 - a tiny demo metrics endpoint that exposes `http_requests_total`
